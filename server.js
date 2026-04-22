@@ -40,6 +40,10 @@ async function handleEvent(event) {
   const userText = (event.message.text || '').trim();
   const answer = normalizeAnswer(userText);
 
+  if (!['A', 'B', 'C'].includes(answer)) {
+    return null;
+  }
+
   let imageUrl = '';
 
   if (answer === 'A') {
@@ -48,11 +52,6 @@ async function handleEvent(event) {
     imageUrl = 'https://sport115ntpc-line.onrender.com/assets/B.png';
   } else if (answer === 'C') {
     imageUrl = 'https://sport115ntpc-line.onrender.com/assets/C.png';
-  } else {
-    return client.replyMessage(event.replyToken, {
-      type: 'text',
-      text: '請輸入 A、B 或 C 喔。'
-    });
   }
 
   return client.replyMessage(event.replyToken, {
