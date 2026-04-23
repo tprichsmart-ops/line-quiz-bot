@@ -10,10 +10,25 @@ const config = {
 
 const client = new line.Client(config);
 
+const QUIZ_ABC_ENABLED = process.env.QUIZ_ABC_ENABLED !== 'false';
+const QUIZ_ABC_END_AT = process.env.QUIZ_ABC_END_AT || '2026-04-27T00:00:00+08:00';
+
 function normalizeAnswer(text) {
   return (text || '')
     .replace(/[()（）\s]/g, '')
     .toUpperCase();
+}
+
+function isQuizAbcActive() {
+  if (!QUIZ_ABC_ENABLED) return false;
+
+  const endAt = new Date(QUIZ_ABC_END_AT);
+  if (Number.isNaN(endAt.getTime())) {
+    console.error('Invalid QUIZ_ABC_END_AT:', QUIZ_ABC_END_AT);
+    return false;
+  }
+
+  return new Date() < endAt;
 }
 
 app.get('/health', (req, res) => {
@@ -34,6 +49,10 @@ async function handleEvent(event) {
   console.log('EVENT:', JSON.stringify(event, null, 2));
 
   if (event.type !== 'message' || event.message.type !== 'text') {
+    return null;
+  }
+
+  if (!isQuizAbcActive()) {
     return null;
   }
 
