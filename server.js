@@ -13,6 +13,63 @@ const client = new line.Client(config);
 const QUIZ_ABC_ENABLED = process.env.QUIZ_ABC_ENABLED !== 'false';
 const QUIZ_ABC_END_AT = process.env.QUIZ_ABC_END_AT || '2026-04-27T00:00:00+08:00';
 
+function getTaipeiNowParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Taipei',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(now);
+
+  const get = (type) => parts.find((p) => p.type === type)?.value;
+
+  return {
+    weekday: get('weekday'),
+    hour: Number(get('hour')),
+    minute: Number(get('minute'))
+  };
+}
+
+function shouldUsePushBySchedule(now = new Date()) {
+  const { weekday, hour } = getTaipeiNowParts(now);
+
+  if (weekday === 'Sat' || weekday === 'Sun') {
+    return true;
+  }
+
+  if (hour >= 18) {
+    return true;
+  }
+
+  return false;
+}
+
+async function sendBySchedule(event, message) {
+  const usePush = shouldUsePushBySchedule();
+
+  try {
+    if (usePush) {
+      const userId = event.source?.userId;
+
+      if (!userId) {
+        console.error('sendBySchedule push failed: missing userId, fallback to replyMessage');
+        return client.replyMessage(event.replyToken, message);
+      }
+
+      return client.pushMessage(userId, message);
+    }
+
+    return client.replyMessage(event.replyToken, message);
+  } catch (error) {
+    console.error(
+      'sendBySchedule failed:',
+      error?.response?.data || error?.message || error
+    );
+    return null;
+  }
+}
+
 function normalizeAnswer(text) {
   return (text || '')
     .replace(/[()（）\s]/g, '')
@@ -73,7 +130,7 @@ async function handleEvent(event) {
     imageUrl = 'https://sport115ntpc-line.onrender.com/assets/C.png';
   }
 
-  return client.replyMessage(event.replyToken, {
+  return sendBySchedule(event, {
     type: 'image',
     originalContentUrl: imageUrl,
     previewImageUrl: imageUrl
